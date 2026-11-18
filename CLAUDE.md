@@ -7,7 +7,8 @@ pom.xml
 src/main/java/com/herrcult69/metm/{Alice,Bob,Trudy}.java   (package com.herrcult69.metm)
 ```
 
-Ports: Alice -> Trudy on 9000, Trudy -> Bob on 9002. Java release 8, no dependencies.
+Ports: Alice -> Trudy on 9000, Trudy -> Bob on 9002. Java release 11 (see `pom.xml`'s
+`maven.compiler.source`/`target`), no dependencies.
 
 ## Building (do this automatically after any code/pom change)
 
