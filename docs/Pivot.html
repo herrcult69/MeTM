@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeTM — Trudy pivot options</title>
+<style>
+    :root {
+        --bg: #0f1117;
+        --panel: #171a23;
+        --panel-border: #2a2f3d;
+        --text: #e4e6eb;
+        --muted: #9aa1b1;
+        --accent: #5fb0ff;
+        --good: #52c77a;
+        --warn: #e8b74b;
+        --bad: #e8604b;
+        --code-bg: #0b0d12;
+    }
+    @media (prefers-color-scheme: light) {
+        :root:not([data-theme="dark"]) {
+            --bg: #f6f7fb;
+            --panel: #ffffff;
+            --panel-border: #dde1ea;
+            --text: #1c1f26;
+            --muted: #5b6372;
+            --accent: #0b6fc9;
+            --good: #1f8a4c;
+            --warn: #966b06;
+            --bad: #b03a26;
+            --code-bg: #eef0f5;
+        }
+    }
+    :root[data-theme="light"] {
+        --bg: #f6f7fb;
+        --panel: #ffffff;
+        --panel-border: #dde1ea;
+        --text: #1c1f26;
+        --muted: #5b6372;
+        --accent: #0b6fc9;
+        --good: #1f8a4c;
+        --warn: #966b06;
+        --bad: #b03a26;
+        --code-bg: #eef0f5;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+        padding: 16px;
+    }
+    main {
+        max-width: 880px;
+        margin: 0 auto;
+    }
+    h1 {
+        font-size: 1.6rem;
+        margin: 0 0 4px;
+    }
+    .subtitle {
+        color: var(--muted);
+        margin: 0 0 28px;
+        font-size: 0.95rem;
+    }
+    h2 {
+        font-size: 1.15rem;
+        margin: 2.2em 0 0.6em;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--panel-border);
+    }
+    h3 {
+        font-size: 1rem;
+        margin: 1.4em 0 0.5em;
+        color: var(--accent);
+    }
+    p { margin: 0.5em 0; }
+    .card {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 10px;
+        padding: 18px 20px;
+        margin: 14px 0;
+    }
+    .tag {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        padding: 3px 9px;
+        border-radius: 999px;
+        margin-bottom: 10px;
+    }
+    .tag.recommended { background: rgba(82,199,122,0.15); color: var(--good); }
+    .tag.risky { background: rgba(232,96,75,0.15); color: var(--bad); }
+    .tag.medium { background: rgba(232,183,75,0.15); color: var(--warn); }
+    ul { margin: 0.4em 0; padding-left: 1.3em; }
+    li { margin: 0.35em 0; }
+    code, pre {
+        font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+        font-size: 0.85rem;
+    }
+    code {
+        background: var(--code-bg);
+        padding: 2px 5px;
+        border-radius: 4px;
+    }
+    pre {
+        background: var(--code-bg);
+        border: 1px solid var(--panel-border);
+        border-radius: 8px;
+        padding: 12px 14px;
+        overflow-x: auto;
+        margin: 0.6em 0;
+    }
+    pre code { background: none; padding: 0; }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1em 0;
+        font-size: 0.92rem;
+    }
+    th, td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--panel-border);
+        vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .verdict {
+        background: rgba(95,176,255,0.1);
+        border: 1px solid rgba(95,176,255,0.35);
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 20px 0;
+    }
+    .verdict strong { color: var(--accent); }
+    .risk-low { color: var(--good); font-weight: 600; }
+    .risk-med { color: var(--warn); font-weight: 600; }
+    .risk-high { color: var(--bad); font-weight: 600; }
+    footer {
+        margin-top: 3em;
+        padding-top: 1em;
+        border-top: 1px solid var(--panel-border);
+        color: var(--muted);
+        font-size: 0.82rem;
+    }
+</style>
+</head>
+<body>
+<main>
+    <h1>Trudy pivot options</h1>
+    <p class="subtitle">Should Trudy stay a hand-rolled Java relay, go hybrid with Wireshark, or move to Ettercap/Bettercap? What changes, and what to expect, under each.</p>
+
+    <div class="card">
+        <strong>Why this came up:</strong> eavesdropping and active tampering have different minimum
+        requirements. Passive eavesdropping only needs traffic to physically flow through Trudy's
+        machine (ARP spoof + IP forwarding) — no application-layer relay at all. Active
+        tampering/forging needs something that actually terminates and rewrites the stream, which is
+        where a real tool choice exists.
+    </div>
+
+    <h2>A. Keep <code>Trudy.java</code> as-is</h2>
+    <p>The custom Java relay, now fixed (closed-socket-after-accept, connect-retry, heartbeat-based
+    fast failure detection). Full control, exactly matched to the app's line protocol.</p>
+    <ul>
+        <li><strong>Pros:</strong> <code>/toalice</code> / <code>/tobob</code> live, typed-on-the-spot forged
+        injection exactly as already documented. Zero new tools to learn before presenting.</li>
+        <li><strong>Cons:</strong> it's still hand-rolled networking code you own if anything else
+        surfaces — and several real bugs already came from exactly that (see footer).</li>
+    </ul>
+
+    <h2>B. Hybrid — Wireshark for eavesdrop, keep the relay for tampering</h2>
+    <span class="tag recommended">Recommended</span>
+    <p>Split the demo into two phases instead of one continuous attack.</p>
+    <h3>Phase 1 — eavesdrop (zero code)</h3>
+    <ul>
+        <li><code>arpspoof</code> + <code>net.ipv4.ip_forward=1</code>, but <strong>no <code>iptables
+        REDIRECT</code>, no Trudy process at all.</strong> Traffic still reaches the real Bob
+        untouched — ARP spoofing just makes it pass through Trudy's NIC first.</li>
+        <li>Open Wireshark on the Kali interface, filter <code>tcp.port==9000</code>, right-click a
+        packet → <strong>Follow → TCP Stream</strong>. The live conversation scrolls by in plaintext.</li>
+    </ul>
+    <h3>Phase 2 — tamper / drop / forge (unchanged)</h3>
+    <ul>
+        <li>Add the <code>iptables REDIRECT</code> rule, start <code>Trudy.java</code> exactly as
+        already built and fixed. Nothing new here.</li>
+    </ul>
+    <h3>What to expect</h3>
+    <ul>
+        <li>The heartbeat noise (<code>\u0001HB</code>, ~700ms each direction) will show up raw in
+        Wireshark's Follow-Stream view — Wireshark has no app-level knowledge to filter it the way
+        Trudy's own console now does. Either explain it live ("that's our keep-alive ping, ignore
+        it") or add a Wireshark display filter beforehand.</li>
+        <li>You're driving a GUI tool live during the demo instead of a terminal — rehearse it, but
+        there's nothing to <em>debug</em> in it; it's not code you wrote.</li>
+        <li><strong>Net risk: <span class="risk-low">low</span></strong> — this only removes a
+        working piece from one phase; nothing new is built.</li>
+    </ul>
+
+    <h2>C / D. Replace <code>Trudy.java</code> entirely — Ettercap / Bettercap</h2>
+    <span class="tag risky">Higher risk this close to presenting</span>
+    <h3>What changes</h3>
+    <ul>
+        <li><code>Trudy.java</code> goes away. Ettercap does the ARP spoofing itself (replacing
+        <code>arpspoof</code>), plus an <code>etterfilter</code> script — a small DSL, compiled with
+        <code>etterfilter script.ecf -o script.ef</code> — that matches and rewrites TCP payloads
+        live:</li>
+    </ul>
+    <pre><code>if (ip.proto == TCP &amp;&amp; tcp.dst == 9000) {
+    if (search(DATA.data, "love")) {
+        replace("love", "hate");
+        msg("tampered a line\n");
+    }
+}</code></pre>
+    <pre><code>sudo ettercap -T -q -i eth0 -F script.ef -M arp:remote /192.168.0.123// /192.168.0.152//</code></pre>
+    <p>One tool now replaces <code>arpspoof</code> + <code>iptables REDIRECT</code> + the entire Java
+    relay.</p>
+    <h3>What to expect — the real cost</h3>
+    <ul>
+        <li><strong>Loses live, typed-on-the-spot forgery.</strong> <code>/toalice</code> /
+        <code>/tobob</code> let you type an arbitrary forged line <em>during</em> the demo, reacting
+        to whatever was just said. Ettercap's filters are <strong>compiled rules decided in
+        advance</strong> — forging becomes "the moment text contains X, inject Y," scripted and
+        rehearsed, not typed live.</li>
+        <li><strong>New unknowns to validate before presenting:</strong> <code>etterfilter</code>
+        syntax has real sharp edges — matching the right direction with <code>tcp.src</code>/
+        <code>tcp.dst</code>, payload offsets, and same-length replacement requirements (a
+        differently-sized replacement string gets fiddly fast). Trading bugs you understand for bugs
+        in a DSL you don't have muscle memory in yet.</li>
+        <li><strong>Bettercap specifically:</strong> weaker fit. It's built around HTTP(S) proxying
+        and network recon, not arbitrary custom raw-TCP protocols — supporting this chat app properly
+        would likely mean writing a Go module/plugin, which is <em>more</em> custom code than what
+        exists today, not less. Dropped from serious consideration here.</li>
+        <li><strong>Net risk: <span class="risk-med">medium–high</span></strong> — real payoff (a
+        recognizable industry pentest tool, zero relay code) but real new-unknowns cost, and it
+        changes what the signature "forge a message" demo beat looks and feels like.</li>
+    </ul>
+
+    <div class="verdict">
+        <strong>Verdict:</strong> go with <strong>B, the hybrid.</strong> It's the only option that
+        <em>reduces</em> risk this close to the deadline — it removes code from the part that's safe
+        to remove (eavesdropping needs no app-layer relay at all) and keeps the part that's already
+        fixed and working (tampering/forging) exactly as it is today. Ettercap is a legitimate, more
+        "textbook pentest tool" demo with another week of rehearsal time, but swapping the forge
+        mechanism and learning a new filter DSL days before presenting tends to eat the time it was
+        supposed to save.
+    </div>
+
+    <h2>Quick comparison</h2>
+    <table>
+        <tr><th>Approach</th><th>New code/tools to learn</th><th>Keeps live typed forgery</th><th>Risk this close to deadline</th></tr>
+        <tr><td>A — custom relay (current)</td><td>None (already fixed)</td><td>Yes</td><td class="risk-low">Low</td></tr>
+        <tr><td>B — hybrid (Wireshark + relay)</td><td>Wireshark driving only</td><td>Yes</td><td class="risk-low">Low</td></tr>
+        <tr><td>C — Ettercap</td><td><code>etterfilter</code> DSL</td><td>No (scripted instead)</td><td class="risk-med">Medium–high</td></tr>
+        <tr><td>D — Bettercap</td><td>Likely a Go module</td><td>No</td><td class="risk-high">High</td></tr>
+    </table>
+
+    <footer>
+        MeTM — Man-in-the-Middle demo. See <code>IMPLEMENTATION.md</code> for the full design
+        rationale and <code>README.md</code> for the practical runbook. Bugs referenced above (the
+        TCP backlog race between Bob and Trudy, the ~30s detection gap, the heartbeat log flood) were
+        all found and fixed in the custom relay path, not in the ARP-spoofing/network layer itself.
+    </footer>
+</main>
+</body>
+</html>

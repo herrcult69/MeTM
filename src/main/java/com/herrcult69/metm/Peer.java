@@ -26,7 +26,7 @@ final class Peer {
     // chat line) within HEARTBEAT_TIMEOUT_MS means a hijacked connection is detected
     // in ~2s instead of ~30s, because the heartbeats get blackholed right along with
     // everything else the instant the spoof takes effect.
-    private static final String HEARTBEAT = "\u0001HB";
+    static final String HEARTBEAT = "\u0001HB"; // package-private: Trudy's relay needs to recognize and skip these
     private static final int HEARTBEAT_INTERVAL_MS = 700;
     private static final int HEARTBEAT_TIMEOUT_MS = 2000;
 
