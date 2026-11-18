@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MeTM Day One: Man-in-the-Middle Lesson</title>
+<style>
+  :root {
+    --bg: #f6f6f4;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --muted: #64646a;
+    --line: #dcdcd8;
+    --accent: #2f5bd3;
+    --ok: #1f8a4c;
+    --bad: #c0392b;
+    --warn: #a86b10;
+    --code-bg: #efefec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141519;
+      --card: #1d1e24;
+      --text: #ececf1;
+      --muted: #9b9ba6;
+      --line: #33343c;
+      --accent: #7c9cf5;
+      --ok: #4cc27f;
+      --bad: #ff7b6b;
+      --warn: #e7a84a;
+      --code-bg: #101116;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141519;
+    --card: #1d1e24;
+    --text: #ececf1;
+    --muted: #9b9ba6;
+    --line: #33343c;
+    --accent: #7c9cf5;
+    --ok: #4cc27f;
+    --bad: #ff7b6b;
+    --warn: #e7a84a;
+    --code-bg: #101116;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 70px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 16px;
+  }
+  header.top .brand { font-weight: 700; margin: 0 0 6px; font-size: 15px; }
+  nav.toc { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+  nav.toc a {
+    white-space: nowrap; color: var(--muted); text-decoration: none;
+    font-size: 13px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
+  }
+  nav.toc a:hover, nav.toc a.active { color: var(--accent); border-color: var(--accent); }
+
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 28px; margin: 8px 0 4px; }
+  h2 { font-size: 22px; margin: 0 0 10px; }
+  h3 { font-size: 17px; margin: 18px 0 6px; }
+  section { margin: 36px 0; }
+  p { margin: 8px 0; }
+  .lead { color: var(--muted); font-size: 17px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; margin: 12px 0;
+  }
+  .tag {
+    display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted); margin-left: 6px; vertical-align: middle;
+  }
+  .tag.out { color: var(--warn); border-color: var(--warn); }
+  .tag.java { color: var(--ok); border-color: var(--ok); }
+  code, kbd {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 14px;
+    background: var(--code-bg); padding: 1px 5px; border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg); padding: 12px; border-radius: 8px; overflow-x: auto;
+    font-size: 13px; line-height: 1.5; margin: 10px 0;
+  }
+  pre code { background: none; padding: 0; }
+  .callout { border-left: 4px solid var(--accent); padding: 8px 12px; background: var(--card); border-radius: 6px; margin: 12px 0; }
+  .callout.warn { border-left-color: var(--warn); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 10px 0; display: block; overflow-x: auto; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+
+  button {
+    font: inherit; font-size: 14px; cursor: pointer;
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.primary:hover { color: #fff; opacity: .9; }
+  button:disabled { opacity: .4; cursor: default; }
+  button:disabled:hover { border-color: var(--line); color: var(--text); }
+  input[type="text"] {
+    font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); width: 100%; max-width: 360px;
+  }
+  label.opt { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
+
+  /* ---- step-through stage ---- */
+  .stage {
+    display: grid; grid-template-columns: 1fr 1.2fr 1fr 1.2fr 1fr; align-items: center;
+    gap: 0; margin: 14px 0; min-height: 120px;
+  }
+  .stage.two { grid-template-columns: 1fr 2fr 1fr; }
+  .node {
+    border: 2px solid var(--line); border-radius: 12px; padding: 10px 6px; text-align: center;
+    background: var(--card); font-weight: 600; font-size: 15px;
+  }
+  .node small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 4px; min-height: 2.4em; }
+  .node.trudy { border-color: var(--bad); }
+  .wire {
+    position: relative; height: 0; border-top: 2px solid var(--line); margin: 0 4px;
+  }
+  .wire .lbl {
+    position: absolute; left: 0; right: 0; bottom: 6px; text-align: center;
+    font-size: 12px; color: var(--muted); line-height: 1.2;
+  }
+  .wire::after {
+    content: ""; position: absolute; right: -2px; top: -6px;
+    border-left: 7px solid var(--line); border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+  }
+  .wire.arp { border-top: 2px dotted var(--muted); }
+  .wire.arp::after { border-left-color: var(--muted); }
+  .wire.forged { border-top: 2px dashed var(--bad); }
+  .wire.forged::after { border-left-color: var(--bad); }
+  .wire.read { border-top: 3px solid var(--bad); }
+  .wire.read::after { border-left-color: var(--bad); }
+  .wire.data { border-top: 3px solid var(--ok); }
+  .wire.data::after { border-left-color: var(--ok); }
+
+  .caption { min-height: 4.5em; }
+  .stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .stepper .count { color: var(--muted); font-size: 14px; margin-left: auto; }
+  .mode-tabs { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .mode-tabs button.on { border-color: var(--accent); color: var(--accent); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .legend span::before {
+    content: ""; display: inline-block; width: 22px; height: 0; vertical-align: middle; margin-right: 6px;
+  }
+  .legend .l-arp::before { border-top: 2px dotted var(--muted); }
+  .legend .l-forged::before { border-top: 2px dashed var(--bad); }
+  .legend .l-read::before { border-top: 3px solid var(--bad); }
+  .legend .l-data::before { border-top: 3px solid var(--ok); }
+
+  .out-box {
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 12px;
+    font-size: 15px; background: var(--card); min-height: 3em;
+  }
+  .out-box.good { border-color: var(--ok); }
+  .out-box.bad { border-color: var(--bad); }
+  .log-line { font-family: ui-monospace, Consolas, monospace; font-size: 13.5px; padding: 3px 0; }
+  .log-line b { font-weight: 600; }
+  .log-line.trudy b { color: var(--bad); }
+
+  .quiz-q { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+  .quiz-q:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+  .feedback { margin-top: 6px; font-size: 14px; }
+  .feedback.ok { color: var(--ok); }
+  .feedback.no { color: var(--bad); }
+  .score { font-weight: 600; margin-top: 12px; }
+
+  .gloss dt { font-weight: 600; margin-top: 10px; }
+  .gloss dd { margin: 2px 0 0 0; color: var(--muted); }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 23px; }
+    .stage { grid-template-columns: 1fr 1.4fr 1fr 1.4fr 1fr; }
+    .stage.two { grid-template-columns: 1fr 2fr 1fr; }
+    .stage .node { font-size: 13px; padding: 8px 4px; }
+    .stage .node small { font-size: 11px; }
+    .wire .lbl { font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <p class="brand">MeTM &middot; Day One &middot; Man-in-the-Middle Lesson</p>
+  <nav class="toc" id="toc">
+    <a href="#cast">1. Cast</a>
+    <a href="#lan">2. The house LAN</a>
+    <a href="#flow">3. Flow</a>
+    <a href="#scope">4. Our scope</a>
+    <a href="#playground">5. Playground</a>
+    <a href="#defense">6. Defense lab</a>
+    <a href="#code">7. Code</a>
+    <a href="#run">8. Run it</a>
+    <a href="#quiz">9. Quiz</a>
+    <a href="#gloss">10. Glossary</a>
+  </nav>
+</header>
+
+<main>
+
+<h1>How a man-in-the-middle works</h1>
+<p class="lead">Alice wants to talk to Bob. Trudy lives in the same house, is a hacker and a network expert, and wants to read what they say. This guide walks through the setup, the attack, and the Java simulation that models it. Click the buttons in each section to step through things.</p>
+
+<div class="callout">
+  <strong>Scope of this lesson.</strong> The real attack works at the link layer (ARP spoofing). Our Java simulation does <em>not</em> implement ARP. It assumes the redirect has already happened and models only what Trudy does next: accept Alice's connection, read it, and forward it to Bob over sockets. Sections 3 and 4 show exactly where that line sits.
+</div>
+
+<!-- ============================================================ -->
+<section id="cast">
+  <h2>1. The cast</h2>
+  <div class="card">
+    <table>
+      <tr><th>Who</th><th>Role</th><th>Address in our simulation</th></tr>
+      <tr><td><strong>Alice</strong></td><td>Client. Wants to send messages to Bob.</td><td>Connects to <code>localhost:9000</code> (she believes this is Bob)</td></tr>
+      <tr><td><strong>Bob</strong></td><td>Server. Listens and replies to each message with <code>OK, received: ...</code></td><td>Listens on <code>localhost:9002</code></td></tr>
+      <tr><td><strong>Trudy</strong></td><td>Attacker on the same LAN. Sits in the middle and relays everything.</td><td>Listens on <code>9000</code> (where Alice thinks Bob is) and forwards to Bob on <code>9002</code></td></tr>
+    </table>
+  </div>
+  <p>Trudy's goal is to be in the path without either side noticing. She does not need to break any cryptography in the plain setup, because nothing is encrypted. She just has to be in the middle.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="lan">
+  <h2>2. The house LAN: what it does <em>not</em> protect</h2>
+  <p>Alice, Bob and Trudy share one home network (LAN). Trudy, a network expert, has configured it so that none of the following security properties exist. Each row is a property a network or protocol <em>could</em> have, and whether this house has it.</p>
+  <div class="card" style="overflow-x:auto">
+    <table>
+      <tr><th>#</th><th>Missing property</th><th>What it would provide</th><th>Would it stop Trudy?</th></tr>
+      <tr><td>1</td><td><strong>Confidentiality</strong> (no encryption)</td><td>Only the intended receiver can read the bytes. Traffic is plain TCP text.</td><td>Yes. Trudy can read everything.</td></tr>
+      <tr><td>2</td><td><strong>Integrity</strong> (no message check)</td><td>Receiver can detect that a message was changed in transit.</td><td>Yes, for tampering. Trudy could change messages undetected.</td></tr>
+      <tr><td>3</td><td><strong>Endpoint authentication</strong></td><td>Alice can verify she is really talking to Bob, and Bob can verify who Alice is.</td><td>Yes. Bob accepts any connection; Alice accepts any server on port 9000.</td></tr>
+      <tr><td>4</td><td><strong>Certificate validation</strong> (TLS / PKI)</td><td>A server proves its identity with a certificate signed by a trusted authority.</td><td>Yes. There is no certificate for Alice to check.</td></tr>
+      <tr><td>5</td><td><strong>ARP authentication</strong></td><td>Devices only accept ARP replies they asked for, or that are signed.</td><td>Yes. ARP replies are accepted without any check. (Out of our simulation.)</td></tr>
+      <tr><td>6</td><td><strong>Static ARP entries</strong></td><td>Alice and Bob have fixed, hand-set MAC addresses, so their ARP caches cannot be changed.</td><td>Yes. The cache can be overwritten.</td></tr>
+      <tr><td>7</td><td><strong>Dynamic ARP Inspection</strong> (switch)</td><td>The switch checks ARP replies against a trusted IP-to-MAC table and drops forged ones.</td><td>Yes. Forged replies reach their targets.</td></tr>
+      <tr><td>8</td><td><strong>Network segmentation / client isolation</strong></td><td>Devices cannot see each other's traffic unless the switch sends it to them.</td><td>Yes. Trudy shares a broadcast domain with Alice and Bob.</td></tr>
+      <tr><td>9</td><td><strong>Out-of-band verification</strong></td><td>Alice and Bob confirm a fingerprint or code over another channel (phone, in person).</td><td>Yes. Nothing is compared out of band.</td></tr>
+      <tr><td>10</td><td><strong>Replay protection</strong></td><td>Each message carries a sequence number or nonce so a replayed copy is rejected.</td><td>Not used by our simulation, but Trudy could resend captured messages.</td></tr>
+    </table>
+  </div>
+  <div class="callout">
+    <strong>Why this list matters.</strong> The attack needs only <em>one</em> gap to work. Rows 1 and 3 alone are enough for Trudy to eavesdrop and impersonate. The rest are what a real defense would add in depth.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="flow">
+  <h2>3. The flow: normal, then with Trudy</h2>
+  <p>Use the mode buttons to switch between a normal conversation and the man-in-the-middle version, then step through with Next.</p>
+
+  <div class="mode-tabs">
+    <button id="modeNormal" class="on" onclick="setMode('normal')">Normal conversation</button>
+    <button id="modeAttack" onclick="setMode('attack')">With Trudy in the middle</button>
+  </div>
+
+  <!-- normal stage -->
+  <div id="stageNormal" class="stage two">
+    <div class="node">Alice<small id="nA">client</small></div>
+    <div class="wire data" id="nw1"><span class="lbl" id="nl1"></span></div>
+    <div class="node">Bob<small id="nB">server</small></div>
+  </div>
+
+  <!-- attack stage -->
+  <div id="stageAttack" class="stage" hidden>
+    <div class="node">Alice<small id="aA">Bob's MAC: ?</small></div>
+    <div class="wire" id="w1"><span class="lbl" id="l1"></span></div>
+    <div class="node trudy">Trudy<small>in the middle</small></div>
+    <div class="wire" id="w2"><span class="lbl" id="l2"></span></div>
+    <div class="node">Bob<small id="aB">Alice's MAC: ?</small></div>
+  </div>
+
+  <div class="legend">
+    <span class="l-arp">ARP request</span>
+    <span class="l-forged">forged ARP</span>
+    <span class="l-read">message Trudy can read</span>
+    <span class="l-data">normal traffic</span>
+  </div>
+
+  <div class="card">
+    <div id="stepTitle" style="font-weight:600"></div>
+    <div id="stepTag"></div>
+    <p class="caption" id="stepText"></p>
+    <div class="stepper">
+      <button id="prevBtn" onclick="stepBy(-1)">&larr; Back</button>
+      <button id="nextBtn" class="primary" onclick="stepBy(1)">Next &rarr;</button>
+      <button onclick="resetSteps()">Reset</button>
+      <span class="count" id="stepCount"></span>
+    </div>
+  </div>
+
+  <h3>What Alice and Bob each know</h3>
+  <p>Alice opens a connection and gets replies, so she trusts the replies. But nothing in the exchange proves the other end is Bob. Trudy's relay produces exactly the same bytes that a direct connection would, so the two sides see no difference.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="scope">
+  <h2>4. What our simulation models (and what it does not)</h2>
+  <div class="card" style="overflow-x:auto">
+    <table>
+      <tr><th>Stage of the attack</th><th>In the real attack</th><th>In our Java simulation</th></tr>
+      <tr>
+        <td>Redirect Alice to Trudy</td>
+        <td>ARP spoofing: Trudy answers Alice's "who has Bob's IP?" first, then poisons Bob's cache too. <span class="tag out">ARP, out of scope</span></td>
+        <td>Hardcoded. <code>Alice.java</code> line 15 sets <code>port = 9000</code>. Alice is simply told Bob is there.</td>
+      </tr>
+      <tr>
+        <td>Trudy receives Alice's messages</td>
+        <td>Frames reach Trudy's MAC address because of the poisoned cache.</td>
+        <td>Trudy's <code>ServerSocket</code> on 9000 accepts Alice's TCP connection. <span class="tag java">Trudy.java</span></td>
+      </tr>
+      <tr>
+        <td>Trudy reads and forwards</td>
+        <td>Trudy reads the IP packets and re-sends them to Bob.</td>
+        <td>Trudy reads each line with <code>readLine()</code>, logs it, and writes it to Bob's socket. <span class="tag java">Trudy.java</span></td>
+      </tr>
+      <tr>
+        <td>Bob replies</td>
+        <td>Bob sends his reply to Trudy's MAC (poisoned), and Trudy forwards it to Alice.</td>
+        <td>Bob replies <code>OK, received: ...</code> and Trudy relays it back to Alice. <span class="tag java">Bob.java</span></td>
+      </tr>
+      <tr>
+        <td>Neither side notices</td>
+        <td>Both think they talk directly.</td>
+        <td>Same. Alice and Bob never receive any notice that Trudy is there.</td>
+      </tr>
+    </table>
+  </div>
+  <div class="callout warn">
+    <strong>Honest limitation.</strong> The simulation also does not encrypt or check anything, so it proves that Trudy <em>can</em> read traffic in plain text. It does not prove that any particular defense works. Section 6 is a conceptual lab, not a test of the Java code.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="playground">
+  <h2>5. Playground: type a message, see what Trudy sees</h2>
+  <p>This is a small in-page model of the message path. It does not open sockets. Type something and press Send.</p>
+  <div class="card">
+    <label for="msgIn"><strong>Message from Alice</strong></label><br>
+    <input type="text" id="msgIn" value="my bank PIN is 4321" maxlength="120">
+    <div style="margin-top:10px">
+      <label class="opt"><input type="radio" name="pmode" value="plain" checked> Plain TCP (our Java simulation)</label>
+      <label class="opt"><input type="radio" name="pmode" value="tls"> Encrypted with certificate check (TLS-style)</label>
+    </div>
+    <div class="stepper"><button class="primary" onclick="playSend()">Send</button></div>
+    <div class="out-box" id="playOut">Press Send to see the path.</div>
+  </div>
+  <p style="font-size:14px;color:var(--muted)">In the TLS-style mode, the "scrambled" text is a base64 stand-in for ciphertext, for illustration only. It is not real encryption. The point is that Trudy sees something unreadable and Alice refuses Trudy's certificate.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="defense">
+  <h2>6. Defense lab: turn on protections</h2>
+  <p>Each switch adds one protection from the missing-property table. The outcome box shows whether the attack still gets Trudy into the path, and whether she can read the messages. This is a conceptual model of the rules, not the Java code.</p>
+  <div class="card">
+    <label class="opt"><input type="checkbox" id="dArp" onchange="defense()"> ARP protection (static ARP entries or Dynamic ARP Inspection)</label>
+    <label class="opt"><input type="checkbox" id="dSeg" onchange="defense()"> Network segmentation (Trudy cannot see Alice's or Bob's traffic)</label>
+    <label class="opt"><input type="checkbox" id="dTls" onchange="defense()"> Encryption with certificate check (TLS)</label>
+    <label class="opt"><input type="checkbox" id="dMac" onchange="defense()"> Message integrity (a MAC or signature on each message)</label>
+    <div class="out-box" id="defOut"></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="code">
+  <h2>7. Code walkthrough</h2>
+  <p>Three files in <code>src/main/java/com/herrcult69/metm/</code>, plus a tiny shared logger (<code>Log.java</code>) that prints timestamps and a tag such as <code>[Trudy]</code>.</p>
+
+  <h3>Alice: where she thinks Bob is</h3>
+  <pre><code>String host = "localhost";
+int port = 9000;            // Alice believes Bob is here</code></pre>
+  <p>Alice reads a line from the keyboard, sends it, and waits for one reply line. She stops when she types <code>EOF END</code>.</p>
+
+  <h3>Trudy: listen on 9000, then relay</h3>
+  <pre><code>try (ServerSocket server = new ServerSocket(listenPort)) {   // 9000
+    ...
+    try (Socket fromAlice = server.accept()) {
+        relay(session, fromAlice, bobHost, bobPort);            // 9002
+    }
+}
+
+// inside relay():
+while ((message = aliceIn.readLine()) != null) {
+    Log.info(TAG, "Alice -> Bob #" + relayed + ... + message);  // Trudy SEES the plaintext
+    bobOut.println(message);                                    // forward it
+    String reply = bobIn.readLine();                            // wait for Bob
+    Log.info(TAG, "Bob -> Alice #" + relayed + ": " + reply);   // Trudy SEES the reply
+    aliceOut.println(reply);                                    // pass it back
+}</code></pre>
+  <p>The key line is the <code>Log.info</code> call. Trudy does not need to break anything. The bytes arrive as plain text, so she can read them as they pass.</p>
+
+  <h3>Bob: reply to every message</h3>
+  <pre><code>while ((message = in.readLine()) != null) {
+    if (message.equals("EOF END")) break;
+    String reply = "OK, received: " + message;
+    out.println(reply);
+}</code></pre>
+  <p>Bob accepts the connection without asking who is on the other end. This is the missing <em>endpoint authentication</em> from row 3 of section 2.</p>
+
+  <h3>Protocol rules to notice</h3>
+  <ul>
+    <li><strong>Line-based.</strong> <code>readLine()</code> splits on newlines, so a message cannot contain a line break.</li>
+    <li><strong>One reply per message.</strong> Alice waits for a reply before she sends the next line, and so does Trudy.</li>
+    <li><strong>End marker.</strong> <code>EOF END</code> is forwarded to Bob but gets no reply.</li>
+    <li><strong>One session at a time.</strong> Trudy and Bob handle one connection in their loops. A second client waits until the first finishes.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="run">
+  <h2>8. Run it yourself</h2>
+  <p>Open three terminals in the repository root. Build first, then start the programs in this order: Bob, then Trudy, then Alice. Build instructions are in <code>README.md</code>.</p>
+  <pre><code>java -cp target/classes com.herrcult69.metm.Bob
+java -cp target/classes com.herrcult69.metm.Trudy
+java -cp target/classes com.herrcult69.metm.Alice</code></pre>
+
+  <h3>What to look for</h3>
+  <p>Type <code>hello</code> in Alice's window. The log lines below show the shape of what you should see. Timestamps and the ephemeral port numbers will differ on your machine.</p>
+  <div class="card">
+    <div class="log-line"><b>[Alice]</b> Alice&gt; hello</div>
+    <div class="log-line trudy"><b>[Trudy]</b> Alice -&gt; Bob #1 (5 chars): hello &nbsp;<span class="tag out">Trudy reads it</span></div>
+    <div class="log-line"><b>[Bob]</b> received #1 (5 chars): hello</div>
+    <div class="log-line"><b>[Bob]</b> replied #1: OK, received: hello</div>
+    <div class="log-line trudy"><b>[Trudy]</b> Bob -&gt; Alice #1: OK, received: hello &nbsp;<span class="tag out">Trudy reads it</span></div>
+    <div class="log-line"><b>[Alice]</b> reply #1: OK, received: hello</div>
+  </div>
+  <div class="callout">
+    <strong>Discussion.</strong> Alice's log shows a normal-looking reply. Nothing in Alice's output tells her that Trudy is in the middle. That is the lesson: the attack is visible only to Trudy's log.
+  </div>
+  <p><em>Exercise:</em> Type something sensitive. Check that Trudy's log contains it in plain text.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="quiz">
+  <h2>9. Quiz</h2>
+  <div class="card" id="quizBox"></div>
+  <div class="score" id="score"></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="gloss">
+  <h2>10. Glossary</h2>
+  <div class="card">
+    <dl class="gloss">
+      <dt>ARP (Address Resolution Protocol)</dt>
+      <dd>Maps an IP address to a MAC address on a LAN. Devices broadcast a question ("who has this IP?") and accept any answer. There is no built-in check.</dd>
+      <dt>ARP spoofing / poisoning</dt>
+      <dd>Sending forged ARP replies so that a device's cache points an IP address at the attacker's MAC address.</dd>
+      <dt>MAC address</dt>
+      <dd>The hardware address of a network interface. Used for delivery on the local network.</dd>
+      <dt>IP address and port</dt>
+      <dd>The network address of a host and the number of the service on it. In our simulation, <code>localhost:9000</code> is Trudy and <code>localhost:9002</code> is Bob.</dd>
+      <dt>Socket</dt>
+      <dd>A program's endpoint for network communication. <code>ServerSocket</code> waits for connections; <code>Socket</code> connects.</dd>
+      <dt>Man-in-the-middle (MITM)</dt>
+      <dd>An attacker who sits between two parties and can read, change, or block their messages while both believe they are talking directly.</dd>
+      <dt>Eavesdropping</dt>
+      <dd>Reading traffic that is not meant for you. Prevented by encryption (confidentiality).</dd>
+      <dt>Integrity</dt>
+      <dd>Detecting whether a message was changed. A MAC or digital signature provides this, but it does not hide the content.</dd>
+      <dt>TLS and certificates</dt>
+      <dd>Encrypts a connection and lets the client verify the server's identity with a certificate signed by a trusted authority.</dd>
+      <dt>Dynamic ARP Inspection (DAI)</dt>
+      <dd>A switch feature that drops ARP replies that do not match a trusted IP-to-MAC table.</dd>
+      <dt>Broadcast domain</dt>
+      <dd>The set of devices that receive each other's broadcast frames. Everyone on the same LAN segment is in it, including Trudy.</dd>
+      <dt>Relay (proxy)</dt>
+      <dd>A program that receives data on one connection and forwards it on another. Trudy's program is a relay.</dd>
+    </dl>
+  </div>
+  <p style="font-size:14px;color:var(--muted)">Use this material only on networks you own or are authorized to test, such as this school project's lab.</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- TOC highlight ----------
+  var links = document.querySelectorAll("#toc a");
+  var ids = Array.prototype.map.call(links, function (a) { return a.getAttribute("href").slice(1); });
+  function onScroll() {
+    var y = window.scrollY + 90, current = ids[0];
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && el.offsetTop <= y) current = id;
+    });
+    Array.prototype.forEach.call(links, function (a) {
+      a.classList.toggle("active", a.getAttribute("href") === "#" + current);
+    });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  // ---------- Flow stepper ----------
+  var normalSteps = [
+    { title: "1. Alice sends a message",
+      tag: "",
+      text: "Alice connects to Bob's address and sends a line of text. The bytes travel straight across the switch to Bob.",
+      w: "data", label: "hello (Alice to Bob)" },
+    { title: "2. Bob replies",
+      tag: "",
+      text: "Bob sends back a reply on the same connection. Alice trusts it because it arrived on the connection she opened. Nothing proves to her that the other end is Bob.",
+      w: "data", label: "OK, received: hello (Bob to Alice)" },
+    { title: "3. That is the whole normal conversation",
+      tag: "",
+      text: "Compare this with the attack version: the bytes look identical to Alice and Bob either way.",
+      w: null, label: "" }
+  ];
+
+  var attackSteps = [
+    { title: "1. Alice needs Bob's MAC address",
+      tag: "out",
+      text: "Alice has never talked to Bob on this LAN, so her ARP cache has no entry for Bob's IP (say 192.168.1.20). She broadcasts an ARP request. Everyone hears it, including Trudy.",
+      w1: "arp", l1: "ARP: who has .20?", w2: null, l2: "",
+      aB: "Bob's MAC: ?", bB: "Alice's MAC: ?" },
+    { title: "2. Trudy answers first",
+      tag: "out",
+      text: "Trudy's machine replies before Bob does, claiming Bob's IP is at Trudy's MAC address. ARP accepts this without checking, so Alice's cache now points Bob's IP at Trudy.",
+      w1: "forged", l1: "forged reply: .20 is at MAC-T", w2: null, l2: "",
+      aB: "Bob's MAC: MAC-T (wrong)", bB: "Alice's MAC: ?" },
+    { title: "3. Trudy poisons Bob's cache too",
+      tag: "out",
+      text: "Trudy sends Bob a forged ARP claiming Alice's IP (192.168.1.10) is at Trudy's MAC. Now both directions of the conversation pass through Trudy.",
+      w1: "forged", l1: "", w2: "forged", l2: "forged: .10 is at MAC-T",
+      aB: "Bob's MAC: MAC-T (wrong)", bB: "Alice's MAC: MAC-T (wrong)" },
+    { title: "4. Alice sends a message: Trudy reads it",
+      tag: "java",
+      text: "Alice's frames for Bob's IP go to Trudy's MAC. In our Java simulation this step is the TCP connection to localhost:9000, which Trudy accepts. The message is in plain text, so Trudy can read it.",
+      w1: "read", l1: "hello (Trudy reads it)", w2: null, l2: "",
+      aB: "Bob's MAC: MAC-T (wrong)", bB: "Alice's MAC: MAC-T (wrong)" },
+    { title: "5. Trudy forwards to Bob",
+      tag: "java",
+      text: "Trudy opens her own connection to Bob (localhost:9002) and writes the same text. Bob sees a normal connection from a client. He has no way to tell it is Trudy.",
+      w1: "read", l1: "hello", w2: "data", l2: "hello (Trudy to Bob)",
+      aB: "Bob's MAC: MAC-T (wrong)", bB: "Alice's MAC: MAC-T (wrong)" },
+    { title: "6. Bob replies; Trudy relays it back",
+      tag: "java",
+      text: "Bob replies with OK, received: hello. Trudy reads it too, then sends it to Alice. Alice and Bob each believe the conversation was direct.",
+      w1: "data", l1: "OK, received: hello (Trudy to Alice)", w2: "read", l2: "OK, received: hello",
+      aB: "Bob's MAC: MAC-T (wrong)", bB: "Alice's MAC: MAC-T (wrong)" },
+    { title: "7. Result",
+      tag: "",
+      text: "Trudy has read every message in both directions. Alice and Bob received replies and saw nothing unusual. Section 6 shows what would have stopped this.",
+      w1: null, l1: "", w2: null, l2: "",
+      aB: "Bob's MAC: MAC-T (wrong)", bB: "Alice's MAC: MAC-T (wrong)" }
+  ];
+
+  var mode = "normal", idx = 0;
+  var el = function (id) { return document.getElementById(id); };
+
+  function setMode(m) {
+    mode = m; idx = 0;
+    el("modeNormal").classList.toggle("on", m === "normal");
+    el("modeAttack").classList.toggle("on", m === "attack");
+    el("stageNormal").hidden = m !== "normal";
+    el("stageAttack").hidden = m !== "attack";
+    render();
+  }
+  window.setMode = setMode;
+
+  function stepBy(d) {
+    var steps = mode === "normal" ? normalSteps : attackSteps;
+    idx = Math.min(steps.length - 1, Math.max(0, idx + d));
+    render();
+  }
+  window.stepBy = stepBy;
+  window.resetSteps = function () { idx = 0; render(); };
+
+  function setWire(id, cls, lblId, text) {
+    var w = el(id);
+    w.className = "wire" + (cls ? " " + cls : "");
+    el(lblId).textContent = text || "";
+  }
+
+  function render() {
+    var steps = mode === "normal" ? normalSteps : attackSteps;
+    var s = steps[idx];
+    el("stepTitle").textContent = s.title;
+    el("stepTag").innerHTML = s.tag === "out"
+      ? '<span class="tag out">ARP: outside our simulation</span>'
+      : s.tag === "java" ? '<span class="tag java">Modeled in the Java simulation</span>' : "";
+    el("stepText").textContent = s.text;
+    el("stepCount").textContent = "Step " + (idx + 1) + " of " + steps.length;
+    el("prevBtn").disabled = idx === 0;
+    el("nextBtn").disabled = idx === steps.length - 1;
+
+    if (mode === "normal") {
+      setWire("nw1", s.w || "", "nl1", s.label);
+      el("nw1").style.visibility = s.w ? "visible" : "hidden";
+    } else {
+      setWire("w1", s.w1 || "", "l1", s.l1);
+      setWire("w2", s.w2 || "", "l2", s.l2);
+      el("aA").textContent = s.aB;
+      el("aB").textContent = s.bB;
+    }
+  }
+
+  // Arrows always point right; reply wires are labelled "to Alice" so the direction is explicit.
+  render();
+
+  // ---------- Playground ----------
+  function b64(s) {
+    try { return btoa(unescape(encodeURIComponent(s))); } catch (e) { return "(unencodable)"; }
+  }
+  window.playSend = function () {
+    var msg = el("msgIn").value.trim() || "hello";
+    var mode = document.querySelector('input[name="pmode"]:checked').value;
+    var out = [];
+    out.push('<div class="log-line"><b>Alice sends:</b> ' + escapeHtml(msg) + "</div>");
+    if (mode === "plain") {
+      out.push('<div class="log-line trudy"><b>Trudy sees:</b> ' + escapeHtml(msg) + " &nbsp;(readable)</div>");
+      out.push('<div class="log-line"><b>Bob receives:</b> ' + escapeHtml(msg) + "</div>");
+      out.push('<div class="log-line"><b>Bob replies:</b> OK, received: ' + escapeHtml(msg) + "</div>");
+      out.push('<div class="log-line trudy"><b>Trudy sees the reply too</b>, then forwards it to Alice.</div>');
+      el("playOut").className = "out-box bad";
+      out.push('<div style="margin-top:6px"><strong>Result:</strong> Trudy has read the message. Alice and Bob see a normal exchange.</div>');
+    } else {
+      out.push('<div class="log-line trudy"><b>Trudy sees:</b> ' + escapeHtml(b64(msg)) + " &nbsp;(scrambled, not readable)</div>");
+      out.push('<div class="log-line"><b>Alice checks Trudy\'s certificate:</b> it does not match Bob\'s name, so she aborts.</div>');
+      out.push('<div class="log-line"><b>Bob receives:</b> nothing.</div>');
+      el("playOut").className = "out-box good";
+      out.push('<div style="margin-top:6px"><strong>Result:</strong> Trudy cannot read the message, and Alice refuses to continue with her. The attack is detected.</div>');
+    }
+    el("playOut").innerHTML = out.join("");
+  };
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // ---------- Defense lab ----------
+  window.defense = function () {
+    var arp = el("dArp").checked, seg = el("dSeg").checked, tls = el("dTls").checked, mac = el("dMac").checked;
+    var box = el("defOut");
+    var html, cls;
+    if (arp || seg) {
+      cls = "good";
+      html = "<strong>Trudy never gets into the path.</strong> " +
+        (arp ? "ARP protection rejects her forged replies, so Alice's frames for Bob go directly to Bob. " : "") +
+        (seg ? "Segmentation keeps her off the traffic path. " : "") +
+        "She cannot read or change anything.";
+    } else if (tls) {
+      cls = "good";
+      html = "<strong>Trudy is in the path but reads nothing.</strong> She sees only encrypted bytes. " +
+        "Alice checks the certificate, sees that it is not Bob's, and aborts. The attack is detected." +
+        (mac ? " The MAC is redundant here, since encryption already stops tampering undetected." : "");
+    } else if (mac) {
+      cls = "bad";
+      html = "<strong>Eavesdropping still works.</strong> Trudy reads every message in plain text. " +
+        "But if she changes a message, the MAC check fails and the receiver notices. Integrity is protected, confidentiality is not.";
+    } else {
+      cls = "bad";
+      html = "<strong>Attack succeeds.</strong> Trudy is in the path, reads every message, and nobody notices. This is the setup in our Java simulation.";
+    }
+    box.className = "out-box " + cls;
+    box.innerHTML = html;
+  };
+  defense();
+
+  // ---------- Quiz ----------
+  var questions = [
+    { q: "Alice's program connects to port 9000. Why?",
+      opts: ["It is Trudy's own private port", "Alice believes port 9000 is where Bob is", "9000 is the ARP port"],
+      a: 1,
+      why: "Alice believes Bob is at that address. In the real attack, ARP spoofing makes this true. In our simulation it is hardcoded." },
+    { q: "Which missing property would stop Trudy from reading messages?",
+      opts: ["Dynamic ARP Inspection alone", "Confidentiality (encryption)", "A static IP address"],
+      a: 1,
+      why: "Encryption hides the content. ARP inspection only stops the redirect, and a static IP does not hide anything." },
+    { q: "Does a message integrity check (a MAC) stop Trudy from reading messages?",
+      opts: ["Yes", "No"],
+      a: 1,
+      why: "A MAC proves the message was not changed. It does not hide it. Trudy can still read it." },
+    { q: "How does Bob decide that a connection comes from Alice?",
+      opts: ["He checks a certificate", "He checks a password", "He does not check: he accepts any connection"],
+      a: 2,
+      why: "Bob has no endpoint authentication. Whoever connects gets served. This is why the man-in-the-middle works." },
+    { q: "Which step is outside the Java simulation?",
+      opts: ["Relaying messages between sockets", "ARP poisoning", "Forwarding Bob's reply to Alice"],
+      a: 1,
+      why: "The simulation assumes the redirect has already happened. ARP itself is not implemented." }
+  ];
+  var answered = 0, correct = 0;
+  var qbox = el("quizBox");
+  questions.forEach(function (item, i) {
+    var div = document.createElement("div");
+    div.className = "quiz-q";
+    var h = document.createElement("p");
+    h.innerHTML = "<strong>" + (i + 1) + ".</strong> " + item.q;
+    div.appendChild(h);
+    item.opts.forEach(function (opt, j) {
+      var lab = document.createElement("label");
+      lab.className = "opt";
+      var r = document.createElement("input");
+      r.type = "radio"; r.name = "q" + i; r.value = String(j);
+      lab.appendChild(r);
+      lab.appendChild(document.createTextNode(" " + opt));
+      div.appendChild(lab);
+    });
+    var btn = document.createElement("button");
+    btn.textContent = "Check";
+    var fb = document.createElement("div");
+    fb.className = "feedback";
+    var done = false;
+    btn.onclick = function () {
+      var sel = document.querySelector('input[name="q' + i + '"]:checked');
+      if (!sel || done) return;
+      done = true; answered++;
+      var ok = Number(sel.value) === item.a;
+      if (ok) correct++;
+      fb.className = "feedback " + (ok ? "ok" : "no");
+      fb.textContent = (ok ? "Correct. " : "Not quite. ") + item.why;
+      updateScore();
+    };
+    div.appendChild(btn);
+    div.appendChild(fb);
+    qbox.appendChild(div);
+  });
+  function updateScore() {
+    el("score").textContent = "Score: " + correct + " / " + questions.length +
+      (answered === questions.length ? " - done" : " (" + answered + " answered)");
+  }
+  updateScore();
+})();
+</script>
+</body>
+</html>
