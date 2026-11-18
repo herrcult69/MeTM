@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -26,7 +27,7 @@ public class Trudy {
                     + bobHost + ":" + bobPort);
             Socket alice = server.accept();
             Log.info(TAG, "Alice connected from " + alice.getRemoteSocketAddress());
-            Socket bob = new Socket(bobHost, bobPort);
+            Socket bob = connectToBob(bobHost, bobPort);
             Log.info(TAG, "connected onward to Bob at " + bob.getRemoteSocketAddress());
 
             PrintWriter toAlice = new PrintWriter(alice.getOutputStream(), true);
@@ -43,6 +44,31 @@ public class Trudy {
             b2a.start();
 
             operatorConsole(toAlice, toBob);   // Trudy's keyboard: forge lines
+        }
+    }
+
+    /**
+     * Connects to the real Bob, retrying if he isn't accepting yet. Right after the
+     * attack starts, the pre-spoof Alice<->Bob connection is often still alive, and
+     * Bob's listening socket (if not closed promptly on his side) can silently queue
+     * this connection into a backlog nobody will ever accept() - it then gets RST the
+     * moment that stale process exits. Retrying on refusal means we only succeed once
+     * the wrapper script's fresh Bob process is actually calling accept() again.
+     */
+    private static Socket connectToBob(String bobHost, int bobPort) throws IOException {
+        while (true) {
+            try {
+                return new Socket(bobHost, bobPort);
+            } catch (ConnectException e) {
+                Log.info(TAG, "Bob not accepting yet at " + bobHost + ":" + bobPort
+                        + " (" + e.getMessage() + "), retrying in 1s...");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("interrupted while waiting for Bob", ie);
+                }
+            }
         }
     }
 
