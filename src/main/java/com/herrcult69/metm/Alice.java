@@ -13,11 +13,7 @@ public class Alice {
 
         Log.info(TAG, "dialing Bob at " + host + ":" + port + " ...");
         try (Socket socket = new Socket(host, port)) {
-            // expectedPeerIp = host, the address we just dialed. Under ARP spoofing
-            // this check is structurally blind: Java reports the address we asked to
-            // connect to, not the real L2 path the frames took. It will say "matches"
-            // even while Trudy is in the middle. See IMPLEMENTATION.md section 2.
-            Peer.chat(TAG, socket, "Alice", host);
+            Peer.chat(TAG, socket, "Bob");
         } catch (ConnectException e) {
             Log.error(TAG, "cannot reach " + host + ":" + port + " (" + e.getMessage() + ")");
             System.exit(2);

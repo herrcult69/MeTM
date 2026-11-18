@@ -7,8 +7,9 @@ import java.io.PrintWriter;
 import java.net.Socket;
 
 /**
- * Full-duplex line chat with a self-declared (NOT verified) identity handshake.
- * See IMPLEMENTATION.md, "The handshake" and "The naive IP check", for why.
+ * Full-duplex line chat over one socket. No identity handshake, no IP check --
+ * Alice always dials Bob's real IP and Bob accepts whoever connects. That
+ * bare trust is exactly what Trudy's MITM attack exploits (see IMPLEMENTATION.md).
  *
  * Exit codes (read by run-alice.ps1 / run-bob.ps1):
  *   0 = clean close (EOF END) - do not reconnect
@@ -16,54 +17,34 @@ import java.net.Socket;
  */
 final class Peer {
     static final String END = "EOF END";
-    private static final String HELLO_PREFIX = "HELLO ";
 
     private Peer() {
     }
 
-    /**
-     * @param myName         the name THIS program announces itself as
-     * @param expectedPeerIp the IP we expect the peer to really be at, or null
-     *                       to skip the check
-     */
-    static void chat(String tag, Socket socket, String myName, String expectedPeerIp) throws IOException {
+    /** @param peerName the role this side is always talking to ("Bob" or "Alice") */
+    static void chat(String tag, Socket socket, String peerName) throws IOException {
         try (Socket s = socket;
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
              BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in))) {
 
-            out.println(HELLO_PREFIX + myName);
+            String peerAddr = socket.getInetAddress().getHostAddress() + ":" + socket.getPort();
+            String prompt = "To " + peerName + " (" + peerAddr + ") > ";
+            Log.info(tag, "connected to " + peerName + " at " + peerAddr);
 
-            String realPeerIp = socket.getInetAddress().getHostAddress();
-            if (expectedPeerIp == null) {
-                Log.info(tag, "connected to " + realPeerIp + " (no IP check configured for this role)");
-            } else if (realPeerIp.equals(expectedPeerIp)) {
-                Log.info(tag, "connected to " + realPeerIp + " (matches the expected address)");
-            } else {
-                Log.error(tag, "*** WARNING *** connection is really from " + realPeerIp
-                        + ", expected " + expectedPeerIp + " - this may not be who it claims to be");
-            }
-
-            final String[] claimedName = { "???" };
             Thread reader = new Thread(() -> {
                 boolean clean = false;
                 try {
                     String line;
-                    boolean first = true;
                     while ((line = in.readLine()) != null) {
-                        if (first && line.startsWith(HELLO_PREFIX)) {
-                            claimedName[0] = line.substring(HELLO_PREFIX.length()).trim();
-                            Log.info(tag, "peer announced itself as \"" + claimedName[0] + "\"");
-                            first = false;
-                            continue;
-                        }
-                        first = false;
                         if (line.equals(END)) {
                             Log.info(tag, "peer ended the session (EOF END)");
                             clean = true;
                             break;
                         }
-                        Log.info(tag, "[" + claimedName[0] + " @ " + realPeerIp + "] << " + line);
+                        System.out.println();
+                        Log.info(tag, "[" + peerName + " @ " + peerAddr + "] << " + line);
+                        System.out.print(prompt);
                     }
                     if (line == null) {
                         Log.error(tag, "connection dropped by peer");
@@ -78,6 +59,7 @@ final class Peer {
 
             Log.info(tag, "type messages, or EOF END to quit");
             while (true) {
+                System.out.print(prompt);
                 String msg = keyboard.readLine();
                 if (msg == null) {
                     out.println(END);
