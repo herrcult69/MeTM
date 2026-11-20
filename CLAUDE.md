@@ -1,13 +1,17 @@
 # MeTM
 
-Man-in-the-middle demo using plain Java sockets (Alice -> Trudy -> Bob). Standard Maven layout:
+Man-in-the-middle demo using plain Java sockets (Alice <-> Bob). On the `NoTrudy` branch
+there is no in-path Java relay: Alice dials Bob's real IP directly and the MITM attack
+(eavesdrop/tamper) is done transparently at the network layer with ARP spoofing +
+Ettercap/`etterfilter` on a separate Kali box, not with a third Java process. Standard
+Maven layout:
 
 ```
 pom.xml
-src/main/java/com/herrcult69/metm/{Alice,Bob,Trudy}.java   (package com.herrcult69.metm)
+src/main/java/com/herrcult69/metm/{Alice,Bob}.java   (package com.herrcult69.metm)
 ```
 
-Ports: Alice -> Trudy on 9000, Trudy -> Bob on 9002. Java release 11 (see `pom.xml`'s
+Port: Alice -> Bob on 9000. Java release 11 (see `pom.xml`'s
 `maven.compiler.source`/`target`), no dependencies.
 
 ## Building (do this automatically after any code/pom change)
@@ -22,7 +26,7 @@ MSYS_NO_PATHCONV=1 wsl -d Ubuntu-Restored -- bash -lc 'cd /mnt/p/AntiGravity/Fin
    (`wsl --cd` with a Windows path fails; `cd /mnt/p/...` inside `bash -lc` works. Output of `wsl -l` is UTF-16; pipe through `tr -d '\0'`.)
 3. Success = `target/metm-1.0-SNAPSHOT.jar` and `target/classes/com/herrcult69/metm/*.class` exist.
 4. Run (each in its own terminal, in this order):
-   `java -cp target/classes com.herrcult69.metm.Bob`, then `...Trudy`, then `...Alice`.
+   `java -cp target/classes com.herrcult69.metm.Bob`, then `...Alice`.
 
 ## Conventions
 

