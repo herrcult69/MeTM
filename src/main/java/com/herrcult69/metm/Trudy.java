@@ -77,14 +77,6 @@ public class Trudy {
         try {
             String line;
             while ((line = in.readLine()) != null) {
-                // Pass Alice/Bob's heartbeats straight through, silently. They're invisible
-                // plumbing (keeps reconnect detection fast), not something to log every
-                // ~700ms per direction or run through tamper/drop - that was flooding this
-                // console and corrupting operator typing mid-keystroke.
-                if (line.equals(Peer.HEARTBEAT)) {
-                    synchronized (peerOut) { peerOut.println(line); }
-                    continue;
-                }
                 if (line.equals(END)) {
                     Log.info(TAG, dir + ": EOF END seen, closing");
                     synchronized (peerOut) { peerOut.println(END); }

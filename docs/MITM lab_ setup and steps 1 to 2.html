@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MITM lab: setup and steps 1 to 2</title>
+<style>
+:root {
+  /* Plan: quiet utility page. Neutral slate ink on paper, one teal accent for actions, amber for cautions. Mono for every command. */
+  --paper: #f7f7f5;
+  --panel: #ffffff;
+  --ink: #1d2327;
+  --muted: #5b656d;
+  --line: #d9dcdf;
+  --accent: #0f6e72;
+  --accent-soft: #e3f1f1;
+  --warn: #9a5b00;
+  --warn-soft: #fbf1e0;
+  --code-bg: #20262b;
+  --code-ink: #e7ecef;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #15191c;
+    --panel: #1d2327;
+    --ink: #e6eaed;
+    --muted: #9aa5ad;
+    --line: #333c43;
+    --accent: #5fc3c7;
+    --accent-soft: #1d3436;
+    --warn: #f0b860;
+    --warn-soft: #3a2d16;
+    --code-bg: #0e1214;
+    --code-ink: #e3e9ec;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #15191c;
+  --panel: #1d2327;
+  --ink: #e6eaed;
+  --muted: #9aa5ad;
+  --line: #333c43;
+  --accent: #5fc3c7;
+  --accent-soft: #1d3436;
+  --warn: #f0b860;
+  --warn-soft: #3a2d16;
+  --code-bg: #0e1214;
+  --code-ink: #e3e9ec;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.55;
+}
+main { max-width: 840px; margin: 0 auto; padding: 32px 20px 80px; }
+
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 8px; text-wrap: balance; }
+h2 { font-size: 1.3rem; margin: 40px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); text-wrap: balance; }
+h3 { font-size: 1.02rem; margin: 22px 0 6px; }
+p { margin: 8px 0; max-width: 66ch; }
+.lede { color: var(--muted); font-size: 1.05rem; }
+.kicker { font: 600 0.78rem var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+
+.rule, .callout {
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 18px 0;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.rule { border-left: 4px solid var(--warn); background: var(--warn-soft); }
+.callout { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.rule strong, .callout strong { display: block; margin-bottom: 4px; }
+
+.progress {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0 10px;
+  margin: 0 -20px 8px; padding-left: 20px; padding-right: 20px;
+  font-size: 0.92rem;
+  display: flex; align-items: center; gap: 14px;
+}
+.bar { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.bar > span { display: block; height: 100%; width: 0%; background: var(--accent); transition: width 0.2s ease; }
+.count { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+
+fieldset.addresses {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+  padding: 14px 16px 6px; margin: 16px 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 16px;
+}
+fieldset.addresses legend { padding: 0 6px; font-weight: 600; }
+label { display: block; font-size: 0.86rem; color: var(--muted); margin-bottom: 4px; }
+input[type="text"] {
+  width: 100%; font: 0.95rem var(--mono); color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+}
+input[type="text"]:focus, input[type="checkbox"]:focus, summary:focus, button:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hint { font-size: 0.84rem; color: var(--muted); margin: 0 0 10px; grid-column: 1 / -1; }
+
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.93rem; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+ol.steps { list-style: none; padding: 0; margin: 14px 0; counter-reset: s; }
+ol.steps > li {
+  counter-increment: s; position: relative;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 14px 16px 14px 56px; margin: 0 0 12px;
+}
+ol.steps > li::before {
+  content: counter(s);
+  position: absolute; left: 14px; top: 14px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent);
+  font: 600 0.9rem var(--sans); display: grid; place-items: center;
+}
+ol.steps > li.done { opacity: 0.62; }
+ol.steps > li.done > h3 { text-decoration: line-through; }
+.check { display: flex; gap: 8px; align-items: center; margin: 0 0 6px; font-size: 0.9rem; color: var(--muted); }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.expect { margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 6px 6px 0; font-size: 0.93rem; }
+
+.code { position: relative; margin: 10px 0; }
+.code pre {
+  margin: 0; background: var(--code-bg); color: var(--code-ink);
+  font: 0.88rem/1.5 var(--mono);
+  padding: 12px 14px; padding-right: 74px; border-radius: 8px; overflow-x: auto; white-space: pre;
+}
+.code .lang { position: absolute; left: 14px; top: -9px; background: var(--panel); color: var(--muted); font-size: 0.72rem; padding: 0 6px; border-radius: 4px; border: 1px solid var(--line); }
+.copy {
+  position: absolute; right: 8px; top: 8px;
+  font: 0.78rem var(--sans); color: var(--code-ink); background: transparent;
+  border: 1px solid #55626b; border-radius: 5px; padding: 3px 9px; cursor: pointer;
+}
+.copy:hover { border-color: var(--accent); color: var(--accent); }
+.copy.ok { color: var(--accent); border-color: var(--accent); }
+
+details { margin: 10px 0 0; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+summary { cursor: pointer; padding: 8px 12px; font-weight: 600; font-size: 0.92rem; color: var(--warn); }
+details > div { padding: 0 12px 10px; font-size: 0.92rem; }
+details ul { margin: 6px 0; padding-left: 20px; }
+
+.outcome { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 14px 0; }
+.outcome div { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 0.92rem; }
+.outcome b { display: block; margin-bottom: 4px; color: var(--accent); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.cleanup { font-size: 0.93rem; color: var(--muted); }
+footer { margin-top: 48px; font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+
+@media (prefers-reduced-motion: reduce) { .bar > span { transition: none; } }
+@media (max-width: 480px) { h1 { font-size: 1.5rem; } .progress { flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+<main>
+
+<p class="kicker">IT Security project, lab guide</p>
+<h1>Set up the lab, then run steps 1 and 2</h1>
+<p class="lede">Three team devices on the TotoLink Wi-Fi. Step 1 proves the chat works with no attacker. Step 2 shows what Trudy can read when she sits in the middle with plain text.</p>
+
+<div class="rule">
+  <strong>Only run this on your own network with your team's devices.</strong>
+  Use the TotoLink (hercult69) and nothing else. ARP spoofing must never run on campus, café, or shared Wi-Fi. Stop all spoofing when a step ends, and clear the ARP caches afterwards.
+</div>
+
+<div class="progress" role="status" aria-live="polite">
+  <span class="count" id="count">0 of 0 done</span>
+  <div class="bar" aria-hidden="true"><span id="bar"></span></div>
+</div>
+
+<h2>0. Checks before you start</h2>
+<p>Tick these off in order. Each one prevents a failure that would otherwise show up in front of the class.</p>
+<ol class="steps">
+  <li data-step>
+    <h3>Confirm the TotoLink settings</h3>
+    <label class="check"><input type="checkbox" data-check> Operation Mode is <b>Router</b>, not AP, Bridge or Repeater</label>
+    <label class="check"><input type="checkbox" data-check> AP Isolation (Client Isolation) is <b>off</b></label>
+    <p class="cleanup">Both were checked on the admin page. Router mode keeps the lab on its own subnet, and AP isolation off lets Wi-Fi devices reach each other.</p>
+  </li>
+  <li data-step>
+    <h3>Check the Surface 2's Windows edition</h3>
+    <label class="check"><input type="checkbox" data-check> It says <b>Windows 8.1 Pro</b> under PC settings, PC and devices, PC info</label>
+    <p>Windows RT cannot run Java desktop programs. If the Surface says RT, make it a non-Java machine and use the MacBook or the dev laptop as Alice instead.</p>
+  </li>
+  <li data-step>
+    <h3>Check Java on every machine that runs a program</h3>
+    <div class="code"><span class="lang">Windows or Linux terminal</span><pre data-raw="java -version"></pre><button class="copy" type="button">Copy</button></div>
+    <label class="check"><input type="checkbox" data-check> Version 17 or newer is shown</label>
+  </li>
+  <li data-step>
+    <h3>Compile the chat app on the dev laptop</h3>
+    <p>The app now takes a self-declared identity handshake and a naive IP check (see the project plan's "Real LAN setup" update for why) &mdash; same package, new build output folder.</p>
+    <div class="code"><span class="lang">Windows, from the MeTM folder</span><pre data-raw="javac -d target\classes src\main\java\com\herrcult69\metm\*.java"></pre><button class="copy" type="button">Copy</button></div>
+    <label class="check"><input type="checkbox" data-check> It compiles with no errors, and a <code>target\classes</code> folder appears</label>
+  </li>
+</ol>
+
+<h2>Your addresses</h2>
+<p>Fill these in once. Every command below updates with your values, so you can copy them straight into the terminal.</p>
+<fieldset class="addresses">
+  <legend>Addresses and interface</legend>
+  <div>
+    <label for="ip-alice">Alice's IP (Surface or Mac)</label>
+    <input type="text" id="ip-alice" placeholder="192.168.x.x" autocomplete="off" spellcheck="false">
+  </div>
+  <div>
+    <label for="ip-bob">Bob's IP (dev laptop, Windows)</label>
+    <input type="text" id="ip-bob" placeholder="192.168.x.x" autocomplete="off" spellcheck="false">
+  </div>
+  <div>
+    <label for="ip-trudy">Trudy's IP (Kali VM, on the USB-Ethernet adapter)</label>
+    <input type="text" id="ip-trudy" placeholder="192.168.x.x" autocomplete="off" spellcheck="false">
+  </div>
+  <div>
+    <label for="iface">Trudy's network interface</label>
+    <input type="text" id="iface" value="eth0" autocomplete="off" spellcheck="false">
+  </div>
+  <p class="hint">Get Windows IPs with <code>ipconfig</code> (IPv4 under Wi-Fi). Get Trudy's IP and interface name with <code>ip -br a</code>. In the TotoLink, reserve each IP for its device (Address Reservation or DHCP static binding) so nothing changes mid-demo.</p>
+</fieldset>
+
+<h2>Setup: one-time work on each machine</h2>
+<table>
+  <thead><tr><th>Machine</th><th>Role</th><th>Runs</th></tr></thead>
+  <tbody>
+    <tr><td>Surface 2 or MacBook</td><td>Alice</td><td><code>Alice.java</code>, plain Java client &mdash; native OS, on Wi-Fi</td></tr>
+    <tr><td>Dev laptop, Windows</td><td>Bob</td><td><code>Bob.java</code>, server &mdash; native OS, on Wi-Fi</td></tr>
+    <tr><td>Kali VM (running on the dev laptop, VMware)</td><td>Trudy</td><td>Wireshark and <code>arpspoof</code> now, <code>Trudy.java</code> in later steps &mdash; bridged to a USB-to-Ethernet adapter, wired into a TotoLink LAN port</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <strong>Why Trudy is wired, not Wi-Fi</strong>
+  Two earlier plans turned out to be weaker than this one. Bridging Trudy's VM straight to the laptop's Wi-Fi card often fails silently, because the Wi-Fi driver and the access point drop frames carrying a second MAC address. Running Alice as a second VM on that same Wi-Fi card is no better, since one shared radio generally can't relay client-to-client traffic reliably. The fix: plug a USB-to-Ethernet adapter into the dev laptop, wire it straight into a TotoLink LAN port, and bridge Trudy's VM network adapter to that adapter in VMware. Trudy now has a real wired NIC, Alice and Bob stay native on Wi-Fi, and the bridge is reliable. If it still won't bridge cleanly, fall back to Kali booted from a USB stick on bare metal instead of a VM.
+</div>
+
+<ol class="steps">
+  <li data-step>
+    <h3>Connect every machine to the TotoLink</h3>
+    <p>Alice and Bob: join hercult69 over Wi-Fi, and confirm each gets a 192.168.x.x address. Trudy: plug the USB-to-Ethernet adapter into the dev laptop and a cable from it into a TotoLink LAN port, then set Trudy's VM network adapter to Bridged on that USB adapter (not the Wi-Fi card) in VMware's VM settings.</p>
+    <label class="check"><input type="checkbox" data-check> Alice and Bob are on Wi-Fi, and Trudy's VM is bridged to the wired USB adapter</label>
+  </li>
+  <li data-step>
+    <h3>Set Windows networks to Private</h3>
+    <p>Settings, Network and Internet, your Wi-Fi, Network profile: choose Private. Public blocks the inbound connections Bob needs.</p>
+    <label class="check"><input type="checkbox" data-check> Alice's and Bob's Wi-Fi are Private</label>
+  </li>
+  <li data-step>
+    <h3>Allow Bob's port through the Windows firewall</h3>
+    <p>Open Command Prompt as administrator on Bob's laptop.</p>
+    <div class="code"><span class="lang">Command Prompt, as administrator, Bob's laptop</span><pre data-raw='netsh advfirewall firewall add rule name="MITM Bob 9002" dir=in action=allow protocol=TCP localport=9002'></pre><button class="copy" type="button">Copy</button></div>
+    <label class="check"><input type="checkbox" data-check> The command reports "Ok."</label>
+  </li>
+  <li data-step>
+    <h3>Install the tools on Trudy's Linux machine</h3>
+    <div class="code"><span class="lang">Trudy's terminal</span><pre data-raw="sudo apt update && sudo apt install -y ettercap-text-only dsniff wireshark"></pre><button class="copy" type="button">Copy</button></div>
+    <p class="cleanup">If Wireshark asks whether non-root users may capture packets, answer yes. Otherwise run it with sudo.</p>
+    <label class="check"><input type="checkbox" data-check> Both packages installed</label>
+  </li>
+</ol>
+
+<h2>Step 1: baseline, no attacker</h2>
+<p>Goal: a message goes from Alice to Bob and back, over real Wi-Fi, with Trudy switched off. If this fails, nothing in step 2 can work, so fix it here first.</p>
+
+<ol class="steps">
+  <li data-step>
+    <h3>Confirm Alice can reach Bob</h3>
+    <div class="code"><span class="lang">Alice's machine</span><pre data-raw="ping -n 3 {BOB}"></pre><button class="copy" type="button">Copy</button></div>
+    <p class="expect">Expected: three replies from Bob's address, with no packet loss.</p>
+    <details>
+      <summary>If it fails</summary>
+      <div>
+        <ul>
+          <li>Check both devices are on hercult69 and Bob's IP is correct.</li>
+          <li>Check the TotoLink's AP Isolation is off (step 0).</li>
+          <li>Check Bob's network profile is Private, and the firewall line from earlier reported Ok.</li>
+        </ul>
+      </div>
+    </details>
+    <label class="check"><input type="checkbox" data-check> Ping replies from Bob</label>
+  </li>
+
+  <li data-step>
+    <h3>No code edit needed &mdash; Bob's address is a command-line argument now</h3>
+    <p>Alice and Bob both take their addresses as arguments, so nothing in the source needs changing or recompiling per-machine anymore. That happens in the next step.</p>
+    <label class="check"><input type="checkbox" data-check> Understood &mdash; no file edits this time</label>
+  </li>
+
+  <li data-step>
+    <h3>Start Bob, then Alice</h3>
+    <p>Bob's laptop, from the MeTM folder (use <code>run-bob.ps1</code> if you have it &mdash; it auto-restarts Bob if a connection ever drops; plain <code>java</code> works too for this first test):</p>
+    <div class="code"><span class="lang">Bob's laptop</span><pre data-raw="java -cp target\classes com.herrcult69.metm.Bob 9000 {ALICE}"></pre><button class="copy" type="button">Copy</button></div>
+    <p class="expect">Expected on Bob's screen: <code>listening on 9000 (expecting Alice at {ALICE}) ...</code></p>
+    <p>Alice's machine, in a second terminal:</p>
+    <div class="code"><span class="lang">Alice's machine</span><pre data-raw="java -cp target\classes com.herrcult69.metm.Alice {BOB} 9000"></pre><button class="copy" type="button">Copy</button></div>
+    <p class="expect">Expected on both screens: a line like <code>connected to &lt;ip&gt; (matches the expected address)</code>, then <code>peer announced itself as "Bob"</code> / <code>"Alice"</code> &mdash; that's the handshake.</p>
+    <label class="check"><input type="checkbox" data-check> Bob is listening and Alice's handshake completed</label>
+  </li>
+
+  <li data-step>
+    <h3>Chat both ways, in any order</h3>
+    <p>This is a real full-duplex chat now &mdash; either side can type at any time, there's no request/reply lockstep. Type on Alice's side:</p>
+    <div class="code"><span class="lang">Alice's prompt</span><pre>Transfer 100 to Bob</pre><button class="copy" type="button">Copy</button></div>
+    <p class="expect">Expected on Bob's screen: <code>[Alice @ {ALICE}] &lt;&lt; Transfer 100 to Bob</code>. Type something back on Bob's side without waiting &mdash; it should show up on Alice's screen the same way, immediately.</p>
+    <details>
+      <summary>If Alice says "connection refused" or hangs</summary>
+      <div>
+        <ul>
+          <li>Refused right away: Bob is not running, or Alice's IP is wrong. Start Bob first.</li>
+          <li>Hangs with no output: the firewall rule did not apply. Rerun the netsh line as administrator.</li>
+          <li>Nothing arrives at all: check both sides printed the handshake line from the previous step.</li>
+        </ul>
+      </div>
+    </details>
+    <label class="check"><input type="checkbox" data-check> Both windows show each other's messages, in any order</label>
+  </li>
+
+  <li data-step>
+    <h3>Close the session</h3>
+    <p>In Alice's window, type exactly:</p>
+    <div class="code"><span class="lang">Alice's prompt</span><pre>EOF END</pre><button class="copy" type="button">Copy</button></div>
+    <p class="expect">Expected on Bob's screen: <code>peer ended the session (EOF END)</code>, then both programs exit cleanly (exit code 0). Each process now handles exactly one conversation &mdash; for another round, just start them again, or use <code>run-bob.ps1</code> / <code>run-alice.ps1</code> so a <em>dropped</em> (not cleanly-closed) connection restarts on its own.</p>
+    <label class="check"><input type="checkbox" data-check> Both sides exited cleanly after EOF END</label>
+  </li>
+</ol>
+
+<h2>Step 2: eavesdropping on plain text</h2>
+<p>Goal: Trudy sits between Alice and Bob without touching any message, and reads the whole conversation in Wireshark. Nothing is changed in the chat app. Trudy only forwards traffic and watches it.</p>
+
+<div class="callout">
+  <strong>How it works</strong>
+  ARP spoofing tells Alice that Bob's IP belongs to Trudy's MAC address, and tells Bob the same about Alice. Their packets then arrive at Trudy, who forwards them on herself &mdash; ettercap does this internally, so the kernel's <code>ip_forward</code> should stay <b>off</b> (see the correction in the next step). Neither Alice nor Bob sees a change.
+</div>
+
+<ol class="steps">
+  <li data-step>
+    <h3>Check Trudy's address and interface</h3>
+    <div class="code"><span class="lang">Trudy's terminal</span><pre data-raw="ip -br a"></pre><button class="copy" type="button">Copy</button></div>
+    <p class="expect">Expected: the interface you named in the form (e.g. <code>eth0</code>, <code>enp0s3</code>, <code>wlan0</code>) with Trudy's IP beside it.</p>
+    <label class="check"><input type="checkbox" data-check> Interface name and IP entered above</label>
+  </li>
+
+  <li data-step>
+    <h3>Start ettercap (handles ARP spoofing and forwarding itself)</h3>
+    <p class="cleanup">Correction, 2026-11-20: earlier drafts of this step used two separate <code>arpspoof</code> terminals plus a manual <code>ip_forward=1</code>. Switched to ettercap instead &mdash; one command poisons both directions, and it forwards packets internally. Leave the kernel's <code>ip_forward</code> <b>off</b> for this &mdash; turning it on makes the kernel double-forward every packet alongside ettercap's own forwarding, a real documented ettercap gotcha that looks like traffic corruption. If it's already 1 from an earlier session: <code>sudo sysctl -w net.ipv4.ip_forward=0</code>.</p>
+    <div class="code"><span class="lang">Trudy's terminal</span><pre data-raw="sudo ettercap -T -q -i {IFACE} -M arp:remote /{ALICE}// /{BOB}//"></pre><button class="copy" type="button">Copy</button></div>
+    <p class="expect">Expected: a line "ARP poisoning victims:" listing both GROUP 1 ({ALICE}) and GROUP 2 ({BOB}). Leave it running until cleanup.</p>
+    <details>
+      <summary>If only one group shows, or neither does</summary>
+      <div>
+        <ul>
+          <li>Quit (<code>q</code>) and restart ettercap &mdash; the initial ARP scan sometimes misses one target on the first pass.</li>
+          <li>Confirm the interface name with <code>ip -br a</code> and update the form.</li>
+          <li>Confirm with <code>arp -a</code> on Alice's and Bob's own machines that the other party's MAC now shows Trudy's.</li>
+        </ul>
+      </div>
+    </details>
+    <label class="check"><input type="checkbox" data-check> Both GROUP 1 and GROUP 2 are listed as poisoned</label>
+  </li>
+
+  <li data-step>
+    <h3>Confirm Alice's ARP table now points at Trudy</h3>
+    <p>On Alice's machine, in Command Prompt:</p>
+    <div class="code"><span class="lang">Alice's Command Prompt</span><pre>arp -a</pre><button class="copy" type="button">Copy</button></div>
+    <p class="expect">Expected: Bob's IP is listed with Trudy's MAC address, not Bob's own. Before the spoof, it was Bob's own MAC.</p>
+    <p class="cleanup">This is the only visible trace of the attack, and nothing on Alice's screen reports it.</p>
+    <label class="check"><input type="checkbox" data-check> Bob's IP shows Trudy's MAC address</label>
+  </li>
+
+  <li data-step>
+    <h3>Start the capture in Wireshark</h3>
+    <div class="code"><span class="lang">Trudy's terminal</span><pre data-raw="sudo wireshark"></pre><button class="copy" type="button">Copy</button></div>
+    <p>Pick the interface from the form, then set this capture filter before you start:</p>
+    <div class="code"><span class="lang">Capture filter</span><pre data-raw="host {ALICE} and host {BOB}"></pre><button class="copy" type="button">Copy</button></div>
+    <label class="check"><input type="checkbox" data-check> Capture is running with the filter</label>
+  </li>
+
+  <li data-step>
+    <h3>Send the same message from Alice</h3>
+    <p>Alice's window, the same as step 1. The chat behaves exactly as before.</p>
+    <div class="code"><span class="lang">Alice's prompt</span><pre>Transfer 100 to Bob</pre><button class="copy" type="button">Copy</button></div>
+    <p class="expect">Expected on Alice and Bob: the same reply as step 1. Nothing looks different.</p>
+    <label class="check"><input type="checkbox" data-check> Alice and Bob both show the normal exchange</label>
+  </li>
+
+  <li data-step>
+    <h3>Read the conversation in Wireshark</h3>
+    <p>Find a TCP packet with data in it, right-click it, and choose Follow, then TCP Stream.</p>
+    <p class="expect">Expected: <code>Transfer 100 to Bob</code> and <code>OK, received: Transfer 100 to Bob</code> appear as plain text, in order, with Alice's and Bob's addresses on each side.</p>
+    <details>
+      <summary>If Wireshark shows nothing between Alice and Bob</summary>
+      <div>
+        <ul>
+          <li>Check ettercap is still running and both GROUP 1 and GROUP 2 show as poisoned.</li>
+          <li>Check the capture filter uses the right IPs, and the interface is the one Trudy is actually on.</li>
+          <li>If Alice's arp -a still shows Bob's own MAC, the spoof is not reaching her. Check Trudy's VM is bridged to the USB-Ethernet adapter, not the Wi-Fi card, and that the adapter's cable is in a TotoLink LAN port. If it still won't bridge, fall back to bare-metal Kali (see the callout above).</li>
+          <li>If Alice's chat hangs, make sure the kernel's ip_forward is OFF (ettercap forwards packets itself) and that ettercap hasn't exited.</li>
+        </ul>
+      </div>
+    </details>
+    <label class="check"><input type="checkbox" data-check> The plain-text message is readable in Follow TCP Stream</label>
+  </li>
+
+  <li data-step>
+    <h3>Stop and clean up</h3>
+    <p>Do this before anyone else uses the network. The lab is not safe to leave running.</p>
+    <div class="code"><span class="lang">Trudy's terminal</span><pre>q   (quits ettercap, which un-poisons the ARP tables on the way out)</pre><button class="copy" type="button">Copy</button></div>
+    <p>Then clear Alice's and Bob's ARP caches, so they re-learn the real addresses:</p>
+    <div class="code"><span class="lang">Alice's and Bob's Command Prompt, as administrator</span><pre>arp -d *</pre><button class="copy" type="button">Copy</button></div>
+    <p class="expect">Expected: arp -a on Alice now shows Bob's own MAC address again. Quitting with q sends corrective ARP packets on its way out, the same idea as arpspoof's Ctrl+C.</p>
+    <label class="check"><input type="checkbox" data-check> Spoofing stopped, forwarding off, caches cleared</label>
+  </li>
+</ol>
+
+<h2>What each person should see</h2>
+<div class="outcome">
+  <div><b>Step 1, baseline</b>Alice: a normal reply. Bob: a normal message. Trudy: nothing, she is not running.</div>
+  <div><b>Step 2, plaintext</b>Alice and Bob: unchanged. Trudy's Wireshark: the full conversation in plain text.</div>
+</div>
+
+<h2>What is next</h2>
+<p>Steps 3 and 4 go in the same environment. Step 3 adds AES and HMAC, after which Trudy's Wireshark shows only Base64, and her tampering is rejected. Step 4 is the active attack, where Trudy relays messages through her own Java program and can change or fabricate them. That is the only step where she has to run <code>Trudy.java</code> instead of Wireshark.</p>
+
+<footer>
+  Keep this page and the team's roles with the project doc. Nothing here should run on a network the team does not own.
+</footer>
+
+</main>
+
+<script>
+(function () {
+  // Render commands with the addresses from the form. Tokens: {ALICE} {BOB} {TRUDY} {IFACE}.
+  var fields = {
+    ALICE: document.getElementById('ip-alice'),
+    BOB: document.getElementById('ip-bob'),
+    TRUDY: document.getElementById('ip-trudy'),
+    IFACE: document.getElementById('iface')
+  };
+
+  function value(key) {
+    var v = fields[key] && fields[key].value.trim();
+    if (key === 'IFACE') return v || 'eth0';
+    return v || '<' + key.toLowerCase() + ' IP>';
+  }
+
+  function render() {
+    document.querySelectorAll('pre[data-raw]').forEach(function (pre) {
+      pre.textContent = pre.dataset.raw.replace(/\{(ALICE|BOB|TRUDY|IFACE)\}/g, function (_, key) {
+        return value(key);
+      });
+    });
+  }
+
+  Object.keys(fields).forEach(function (k) {
+    fields[k].addEventListener('input', render);
+  });
+
+  // Keep the raw text available for copy, then render the first time.
+  document.querySelectorAll('pre[data-raw]').forEach(function (pre) {
+    pre.textContent = pre.getAttribute('data-raw');
+  });
+  render();
+
+  // Copy buttons take the rendered text of their block.
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = btn.parentElement.querySelector('pre');
+      var text = pre.textContent;
+      var done = function () {
+        btn.textContent = 'Copied';
+        btn.classList.add('ok');
+        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1400);
+      };
+      try {
+        navigator.clipboard.writeText(text).then(done, function () { btn.textContent = 'Select manually'; });
+      } catch (e) {
+        btn.textContent = 'Select manually';
+      }
+    });
+  });
+
+  // Progress: count checked boxes, strike through finished steps.
+  var boxes = document.querySelectorAll('input[data-check]');
+  var countEl = document.getElementById('count');
+  var barEl = document.getElementById('bar');
+
+  function update() {
+    var done = 0;
+    boxes.forEach(function (b) { if (b.checked) done++; });
+    countEl.textContent = done + ' of ' + boxes.length + ' done';
+    barEl.style.width = boxes.length ? (done / boxes.length * 100) + '%' : '0%';
+    document.querySelectorAll('li[data-step]').forEach(function (li) {
+      var items = li.querySelectorAll('input[data-check]');
+      var allDone = items.length > 0 && Array.prototype.every.call(items, function (i) { return i.checked; });
+      li.classList.toggle('done', allDone);
+    });
+  }
+
+  boxes.forEach(function (b) { b.addEventListener('change', update); });
+  update();
+})();
+</script>
+</body>
+</html>

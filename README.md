@@ -1,10 +1,11 @@
 # MeTM — Man-in-the-Middle chat demo
 
-A deliberately naive Java chat app (Alice, Bob) and an active relay attacker
-(Trudy), built for an IT Security course demo. The design rationale — why the
-identity handshake, the naive IP check, and the reconnect wrapper exist, and
-exactly what each one does and doesn't prove — is in `IMPLEMENTATION.md`. This
-file is just the "how do I actually run it" runbook.
+A deliberately bare Java chat app (Alice, Bob — no identity claim, no IP
+check, no crypto, no heartbeat) and an active relay attacker (Trudy), built
+for an IT Security course demo. The design rationale — why the app stays
+this minimal and why the reconnect wrapper exists — is in
+`IMPLEMENTATION.md`. This file is just the "how do I actually run it"
+runbook.
 
 Package: `com.herrcult69.metm`. Session terminator: the literal line `EOF END`.
 
@@ -92,10 +93,18 @@ data that not every machine's JDK ships for every version.
 - Bob's laptop: `.\run-bob.ps1`
 - Alice's machine: `.\run-alice.ps1`
 
-Expect both sides to log `connected to <ip> (matches the expected address)`,
-then type messages either direction — full duplex, no waiting for a reply.
+Expect both sides to log `connected to <peer> at <ip:port>`, then type
+messages either direction — full duplex, no waiting for a reply.
 
-### 2.2 Bring Trudy into the path (works even mid-conversation now)
+### 2.2 Bring up the active attack — infra FIRST, then Bob and Alice
+
+**Order matters.** There's no heartbeat any more (removed — it was flooding
+Wireshark captures with a line every 700ms per direction, burying the real
+chat traffic). Without it, starting the attack against an *already open*
+Alice↔Bob connection no longer fails fast and predictably — it can hang for
+anywhere from several seconds to much longer before anything notices. Get
+ARP spoofing, the redirect, and Trudy running BEFORE starting Bob and Alice
+instead, and that problem never comes up.
 
 On the Kali VM, in order, each in its own terminal:
 
@@ -120,19 +129,21 @@ sudo iptables -t nat -A PREROUTING -p tcp -d 192.168.0.152 --dport 9000 -j REDIR
 java -cp target/classes com.herrcult69.metm.Trudy 6000 192.168.0.152 9000
 ```
 
-Alice and Bob's existing connection will drop the moment the spoof takes
-effect — expected. Their wrapper scripts will print "connection dropped ...
-reconnecting in 2s..." and come back on their own within a couple seconds.
-Once reconnected, Trudy's console should show:
+**Now** start Bob (`.\run-bob.ps1`), then Alice (`.\run-alice.ps1`). Their
+first connection attempt is a fresh TCP SYN straight into the already-live
+redirect — no drop, no reconnect blip, no hang. Trudy's console should show:
 ```
 Alice connected from /192.168.0.123:...
 connected onward to Bob at /192.168.0.152:...
 ```
+and the conversation looks completely normal from there.
 
-Bob's console will also print a one-time warning that the real connecting IP
-(192.168.0.24) doesn't match the expected Alice address — that's the naive IP
-check correctly detecting the relay. It's one line; everything after it looks
-like a normal chat.
+(If you still want the attack to start mid-conversation for narrative
+reasons: start Bob and Alice first, let them chat, then bring the infra up
+as above. The connection will drop, and the wrapper scripts will eventually
+relaunch both sides — but without the heartbeat, "eventually" is no longer
+a reliable ~2 seconds. Treat it as an optional fallback, not the default
+flow.)
 
 ### 2.3 Live attack commands (type into Trudy's terminal)
 
